@@ -139,7 +139,7 @@ void detectButtonpresses(){
 }
 
 void greenButtonOptionOne(){
-  if(!startgreenButtonOptionOne){   //Starting procedure only done once
+  if(startgreenButtonOptionOne){   //Starting procedure only done once
     Serial.println("Doing greenButtonOptionOne");
     fanSpeed(fanspeed1);
     if(!movevalves(false, true, false)){                     //Keep trying to move valves if they arent in position
@@ -154,14 +154,14 @@ void greenButtonOptionOne(){
 }
 
 void greenButtonOptionTwo(){
-  if(!startgreenButtonOptionTwo){   //Starting procedure only done once
+  if(startgreenButtonOptionTwo){   //Starting procedure only done once
     Serial.println("Doing greenButtonOptionTwo");
     startgreenButtonOptionTwo = false;
   }
 }
 
 void redButton(){
-  if(!startredButton){   //Starting procedure only done once
+  if(startredButton){   //Starting procedure only done once
     Serial.println("Doing redButton");
     startredButton = false;
   }
