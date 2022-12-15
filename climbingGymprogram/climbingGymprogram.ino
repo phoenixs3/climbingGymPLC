@@ -74,7 +74,6 @@ void loop() {
 
 
 void detectButtonpresses(){
-
   for (int i=0; i<4; i++){
     if(lastbuttonstates[i] == LOW && buttonstates[i] == HIGH) {        //Rising edge detection
       pressedTime[i] = millis();
@@ -89,7 +88,6 @@ void detectButtonpresses(){
         Serial.println(" short press detected");
       }
     }
-  
     if(isPressing[i] == true && isLongDetected[i] == false) {
       long pressDuration = millis() - pressedTime[i];
       if(pressDuration > LONG_PRESS_TIME) {
@@ -119,13 +117,13 @@ void printDebug(){
   Serial.println("Input Status:");
 
   Serial.print("- Green Button 1 State: ");
-  Serial.println(greenButtonOne);
+  Serial.println(buttonstates[0]);
   Serial.print("- Green Button 2 State: ");
-  Serial.println(greenButtonTwo);
+  Serial.println(buttonstates[1]);
   Serial.print("- Red Button 1 State: ");
-  Serial.println(redButtonOne);
+  Serial.println(buttonstates[2]);
   Serial.print("- Red Button 2 State: ");
-  Serial.println(redButtonTwo);
+  Serial.println(buttonstates[3]);
 
 
   Serial.println("");
