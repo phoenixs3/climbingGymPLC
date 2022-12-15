@@ -23,6 +23,16 @@
 
 ///////////////////////////////
 
+//-----User definable variables-----//
+const int LONG_PRESS_TIME  = 2000;  //Units in milliseconds
+const int SHORT_PRESS_TIME = 1000;
+const int movevalveserrorthreshold = 300000;   //5 minutes
+const long printInterval = 300;   //also used for error state red light flash interval
+const int fanspeed1 = 26;
+const int fanspeed2 = 51;
+const int fanspeed3 = 76;
+//////////////////////////////////////
+
 //-----Program variables-----//
 bool buttonstates[4];
 bool lastbuttonstates[4];
@@ -31,13 +41,13 @@ unsigned long releasedTime[4];
 bool isPressing[4];
 bool isLongDetected[4];
 
+unsigned long previousMillisPrint, greenButtonOptionOneMillis = 0;
 
-const int LONG_PRESS_TIME  = 2000;  //Units in milliseconds
-const int SHORT_PRESS_TIME = 1000;
-
-unsigned long previousMillisPrint = 0;        // will store last time LED was updated
-const long printInterval = 300;           // interval at which to blink (milliseconds)
-
+bool dogreenButtonOptionOne, dogreenButtonOptionTwo, doredButton = true;
+bool startgreenButtonOptionOne, startgreenButtonOptionTwo, startredButton = false;
+int movevalvestimer = 0;
+bool errorState = false;
+bool redState = false;
 ///////////////////////////////
 
 void setup() {
@@ -67,9 +77,14 @@ void loop() {
     if (currentMillis - previousMillisPrint >= printInterval) {
     previousMillisPrint = currentMillis;
     printDebug();
+    if(errorState){errorFlash();}
   }
   detectButtonpresses();
   readInputs();
+  if(dogreenButtonOptionOne && !errorState){greenButtonOptionOne();}
+  if(dogreenButtonOptionTwo && !errorState){greenButtonOptionTwo();}
+  if(doredButton && !errorState){redButton();}
+
 }
 
 
@@ -84,6 +99,22 @@ void detectButtonpresses(){
       releasedTime[i] = millis();
       long pressDuration = releasedTime[i] - pressedTime[i];
       if(pressDuration < SHORT_PRESS_TIME){
+        if(buttonstates[0] || buttonstates[1]){ //If either green button short press
+          startgreenButtonOptionOne = true; 
+          dogreenButtonOptionOne = true;
+          dogreenButtonOptionTwo = false;
+          doredButton = false;
+          movevalvestimer = 0;
+          flashgreenlights();
+        }
+        if(buttonstates[2] || buttonstates[3]){ //If either red button short press
+          startredButton = true; 
+          dogreenButtonOptionOne = false;
+          dogreenButtonOptionTwo = false;
+          doredButton = true;
+          movevalvestimer = 0;
+          flashredlights();
+        }
         Serial.print(i);
         Serial.println(" short press detected");
       }
@@ -91,6 +122,14 @@ void detectButtonpresses(){
     if(isPressing[i] == true && isLongDetected[i] == false) {
       long pressDuration = millis() - pressedTime[i];
       if(pressDuration > LONG_PRESS_TIME) {
+        if(buttonstates[0] || buttonstates[1]){ //If either green button long press
+          startgreenButtonOptionTwo = true; 
+          dogreenButtonOptionOne = false;
+          dogreenButtonOptionTwo = true;
+          doredButton = false;
+          movevalvestimer = 0;
+          flashgreenlights();
+        }
         Serial.print(i);
         Serial.println(" long press detected");
         isLongDetected[i] = true;
@@ -98,6 +137,79 @@ void detectButtonpresses(){
     }
     lastbuttonstates[i] = buttonstates[i];
   }
+}
+
+void greenButtonOptionOne(){
+  if(!startgreenButtonOptionOne){   //Starting procedure only done once
+    Serial.println("Doing greenButtonOptionOne");
+    fanSpeed(fanspeed1);
+    if(!movevalves(false, true, false)){                     //Keep trying to move valves if they arent in position
+        movevalvestimer++;
+        delay(1);
+    }
+    if(movevalvestimer > movevalveserrorthreshold){errorState = true;}
+    else{startgreenButtonOptionOne = false; greenButtonOptionOneMillis = millis();}
+  }
+  if((millis() - greenButtonOptionOneMillis) > 14400000){fanSpeed(0);}                         //After 4 hrs turn off fans
+  if((millis() - greenButtonOptionOneMillis) > 72000000){startgreenButtonOptionOne = true;}    //After 20hrs start routine again
+}
+
+void greenButtonOptionTwo(){
+  if(!startgreenButtonOptionTwo){   //Starting procedure only done once
+    Serial.println("Doing greenButtonOptionTwo");
+    startgreenButtonOptionTwo = false;
+  }
+}
+
+void redButton(){
+  if(!startredButton){   //Starting procedure only done once
+    Serial.println("Doing redButton");
+    startredButton = false;
+  }
+}
+
+void errorFlash(){
+  redState = !redState;
+  digitalWrite(redLedOne, redState);
+  digitalWrite(redLedTwo, redState);
+}
+
+void flashgreenlights(){
+    digitalWrite(greenLedOne, HIGH);
+    digitalWrite(greenLedTwo, HIGH);
+    delay(500);
+    digitalWrite(greenLedOne, LOW);
+    digitalWrite(greenLedTwo, LOW);
+    delay(500);
+    digitalWrite(greenLedOne, HIGH);
+    digitalWrite(greenLedTwo, HIGH);
+}
+
+void flashredlights(){
+    digitalWrite(redLedOne, HIGH);
+    digitalWrite(redLedTwo, HIGH);
+    delay(500);
+    digitalWrite(redLedOne, LOW);
+    digitalWrite(redLedTwo, LOW);
+    delay(500);
+    digitalWrite(redLedOne, HIGH);
+    digitalWrite(redLedTwo, HIGH);
+}
+
+bool movevalves(bool valve1pos, bool valve2pos, bool valve3pos){
+  //Cuation: untested so logic output/input states may need inverting to match hardware
+  digitalWrite(valveOneMotor, valve1pos);
+  digitalWrite(valveTwoMotor, valve2pos);
+  digitalWrite(valveThreeMotor, valve3pos);
+  if(digitalRead(valveOneIn) != valve1pos){return false;}   //Check if the valve is moved, if not return false
+  if(digitalRead(valveTwoIn) != valve2pos){return false;}
+  if(digitalRead(valveThreeIn) != valve3pos){return false;}
+  else{return true;}
+}
+
+void fanSpeed(int fanspeed){
+  analogWrite(fanOne, fanspeed);
+  analogWrite(fanTwo, fanspeed);
 }
 
 void readInputs(){
