@@ -32,8 +32,8 @@ bool isPressing[4];
 bool isLongDetected[4];
 
 
-const int LONG_PRESS_TIME  = 2000;  //Uints in milliseconds
-const int SHORT_PRESS_TIME = 20;
+const int LONG_PRESS_TIME  = 2000;  //Units in milliseconds
+const int SHORT_PRESS_TIME = 1000;
 
 unsigned long previousMillisPrint = 0;        // will store last time LED was updated
 const long printInterval = 300;           // interval at which to blink (milliseconds)
