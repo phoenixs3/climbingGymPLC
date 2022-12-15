@@ -1,159 +1,154 @@
 //-----Pin definitions------//
 
-#define valveOneIn =    2;
-#define valveTwoIn =    12;
-#define valveThreeIn =  4;
+#define valveOneIn        19
+#define valveTwoIn        18
+#define valveThreeIn      8
 
-#define greenButtonOne =  8;
-#define greenButtonTwo =  18;
-#define redButtonOne =    19;
-#define redButtonTwo =    20;
+#define greenButtonOne    23
+#define greenButtonTwo    21
+#define redButtonOne      22
+#define redButtonTwo      20
 
-#define valveOneMotor =   10;
-#define valveTwoMotor =   9;
-#define valveThreeMotor = 6;
+#define valveOneMotor     10
+#define valveTwoMotor     9
+#define valveThreeMotor   6
 
-#define fanOne = 13;
-#define fanTwo = 11;
+#define fanOne            13
+#define fanTwo            11
 
-#define greenLedOne = 5;
-#define greenLedTwo = 3;
-#define redLedOne =   7;
-#define redLedTwo =   0;
+#define greenLedOne       5
+#define greenLedTwo       3
+#define redLedOne         7
+#define redLedTwo         0
 
 ///////////////////////////////
 
 //-----Program variables-----//
+bool buttonstates[4];
+bool lastbuttonstates[4];
+unsigned long pressedTime[4];
+unsigned long releasedTime[4];
+bool isPressing[4];
+bool isLongDetected[4];
 
-int speedOne;
-int speedTwo;
-int speedThree;
+
+const int LONG_PRESS_TIME  = 2000;  //Uints in milliseconds
+const int SHORT_PRESS_TIME = 20;
+
+unsigned long previousMillisPrint = 0;        // will store last time LED was updated
+const long printInterval = 300;           // interval at which to blink (milliseconds)
 
 ///////////////////////////////
 
 void setup() {
+  Serial.begin(9600);
+  Serial.print("Init...");
   pinMode(valveOneIn,   INPUT);
   pinMode(valveTwoIn,   INPUT);
   pinMode(valveThreeIn, INPUT);
-  
   pinMode(greenButtonOne, INPUT);
   pinMode(greenButtonTwo, INPUT);
   pinMode(redButtonOne,   INPUT);
   pinMode(redButtonTwo,   INPUT);
-  
   pinMode(valveOneMotor,   OUTPUT);
   pinMode(valveTwoMotor,   OUTPUT);
   pinMode(valveThreeMotor, OUTPUT);
-  
   pinMode(fanOne, OUTPUT);
   pinMode(fanTwo, OUTPUT);
-  
   pinMode(greenLedOne, OUTPUT);
   pinMode(greenLedTwo, OUTPUT);
   pinMode(redLedOne,   OUTPUT);
   pinMode(redLedTwo,   OUTPUT);
-
+  Serial.println("done");
 }
 
 void loop() {
-greenButtonOptionOne();
-greenButtonOptionTwo();
-redButtonOptionOne();
-cleanOption();
+  unsigned long currentMillis = millis();
+    if (currentMillis - previousMillisPrint >= printInterval) {
+    previousMillisPrint = currentMillis;
+    printDebug();
+  }
+  detectButtonpresses();
+  readInputs();
 }
 
-//If ether of the Green Buttons is pressed once run System Option One
-void greenButtonOptionOne(){
-  if(digitalRead(greenButtonOne)||digitalRead(greenButtonTwo)){runSystemOptionOne();}
-}
+
+void detectButtonpresses(){
+
+  for (int i=0; i<4; i++){
+    if(lastbuttonstates[i] == LOW && buttonstates[i] == HIGH) {        //Rising edge detection
+      pressedTime[i] = millis();
+      isPressing[i] = true;
+      isLongDetected[i] = false;
+    } else if(lastbuttonstates[i] == HIGH && buttonstates[i] == LOW) { //Falling edge detection
+      isPressing[i] = false;
+      releasedTime[i] = millis();
+      long pressDuration = releasedTime[i] - pressedTime[i];
+      if(pressDuration < SHORT_PRESS_TIME){
+        Serial.print(i);
+        Serial.println(" short press detected");
+      }
+    }
   
-//If ether of the Green Buttons is pressed & help for 5 seconds run System Option Two
-void greenButtonOptionTwo(){
- if(digitalRead(greenButtonOne)||digitalRead(greenButtonTwo)){runSystemOptionTwo();}
-}
-
-//If ether of the Red Buttons is pressed once run Stop Everything
-void redButtonOptionOne(){
- if(digitalRead(redButtonOne)||digitalRead(redButtonTwo)){stopEverything();}
-}
-
-//If ether of the Red Buttons is pressed once run Stop Everything
-void cleanOption(){
- if(digitalRead(greenButtonOne)&&digitalRead(redButtonOne)||digitalRead(greenButtonTwo)&&digitalRead(redButtonTwo)){cleanSystem();}
-}
-
-//Valve 1 = Closed, Valve 2 = Closed, Valve 3 = Closed, Fan 1 & Fan 2 running at 20% for 4 hours off for 20 hours
-void runSystemOptionOne(){
-  digitalWrite(valveOneMotor,   HIGH); //Valve 1 Closed
-  digitalWrite(valveTwoMotor,   HIGH); //Valve 2 Closed
-  digitalWrite(valveThreeMotor, HIGH); //Valve 3 Closed
-
-    if(digitalRead(valveOneIn)&&digitalRead(valveTwoIn)&&digitalRead(valveThreeIn)){fanSpeedTwo();}
-
-}
-
-//Valve 1 = Open, Valve 2 = Closed, Valve 3 = Closed, Fan 1 & Fan 2 running at 30% for 4 hours off for 20 hours
-void runSystemOptionTwo(){
-  digitalWrite(valveOneMotor,   LOW); //Valve 1 OPEN
-  digitalWrite(valveTwoMotor,   HIGH); //Valve 2 Closed
-  digitalWrite(valveThreeMotor, HIGH); //Valve 3 Closed
-
-     if(digitalRead(!valveOneIn)&&digitalRead(valveTwoIn)&&digitalRead(valveThreeIn)){fanSpeedThree();}
-     
-}
-
-//Valve 1 = Open, Valve 2 = Open, Valve 3 = Open, Fan 1 & Fan 2 running at 10% for 5 min
-void stopEverything(){
-  digitalWrite(valveOneMotor,   LOW); //Valve 1 Open
-  digitalWrite(valveTwoMotor,   LOW); //Valve 2 Open
-  digitalWrite(valveThreeMotor, LOW); //Valve 3 Open  
-
-    if(digitalRead(!valveOneIn)&&digitalRead(!valveTwoIn)&&digitalRead(!valveThreeIn)){fanSpeedOne();}  
-
-}
-
-//Valve 1 = Closed, Valve 2 = Closed, Valve 3 = Closed, Fan 1 & Fan 2 running at 20% for 4 hours off for 20 hours
-void cleanSystem(){
-  digitalWrite(valveOneMotor,   HIGH); //Valve 1 Closed
-  digitalWrite(valveTwoMotor,   HIGH); //Valve 2 Closed
-  digitalWrite(valveThreeMotor, HIGH); //Valve 3 Closed
-
-    if(digitalRead(valveOneIn)&&digitalRead(valveTwoIn)&&digitalRead(valveThreeIn)){fanSpeedTwo();}  
-    
-}
-void fanSpeedOne(){
-  for (int speed = 0; speed <= 255; speed++){
-    analogWrite(fanOne, 26);
-    delay(10);
+    if(isPressing[i] == true && isLongDetected[i] == false) {
+      long pressDuration = millis() - pressedTime[i];
+      if(pressDuration > LONG_PRESS_TIME) {
+        Serial.print(i);
+        Serial.println(" long press detected");
+        isLongDetected[i] = true;
+      }
+    }
+    lastbuttonstates[i] = buttonstates[i];
   }
-  for (int speed = 0; speed <= 255; speed++){
-    analogWrite(fanOne, 26);
-    delay(10);
-  }  
 }
-//Fan running at 10%
 
-void fanSpeedTwo(){
-  for (int speed = 0; speed <= 255; speed++){
-    analogWrite(fanOne, 51);
-    delay(10);
-  }
-  for (int speed = 0; speed <= 255; speed++){
-    analogWrite(fanOne, 51);
-    delay(10);
-  }   
+void readInputs(){
+  buttonstates[0] = !digitalRead(greenButtonOne);   //invert green buttons as they are normally closed (NC)
+  buttonstates[1] = !digitalRead(greenButtonTwo);
+  buttonstates[2] = digitalRead(redButtonOne);
+  buttonstates[3] = digitalRead(redButtonTwo);
 }
-//Fan running at 20%
 
-void fanSpeedThree(){
-  for (int speed = 0; speed <= 255; speed++){
-    analogWrite(fanOne, 76);
-    delay(10);
-  }
-  for (int speed = 0; speed <= 255; speed++){
-    analogWrite(fanTwo, 76);
-    delay(10);
-  }  
+void printDebug(){
+  Serial.println("");
+  Serial.println("");
+  Serial.println("");
+  Serial.println("///////////    Climbing Gym PLC    ///////////");
+  Serial.println("");
+
+  Serial.println("Input Status:");
+
+  Serial.print("- Green Button 1 State: ");
+  Serial.println(greenButtonOne);
+  Serial.print("- Green Button 2 State: ");
+  Serial.println(greenButtonTwo);
+  Serial.print("- Red Button 1 State: ");
+  Serial.println(redButtonOne);
+  Serial.print("- Red Button 2 State: ");
+  Serial.println(redButtonTwo);
+
+
+  Serial.println("");
+  Serial.println("");
+
+  Serial.println("Valve Control");
+  Serial.println("- todo");
+
+  //valves are closed by writing pin high
+
+  Serial.println("");
+  Serial.println("");
+  
+  Serial.println("Fan Control:");
+  Serial.println("- todo");
+
+  //fan speed 1: 26 analogwrite)
+  //speed 2: 51
+  //speed 3: 76
+  
+  Serial.println("");
+  Serial.println("");
+
+  Serial.println("");
+  Serial.println("//////////////////////////////////////////////");
 }
-//Fan running at 30%
-//Last Change for today
