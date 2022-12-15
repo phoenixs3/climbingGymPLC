@@ -76,7 +76,7 @@ void loop() {
   unsigned long currentMillis = millis();
     if (currentMillis - previousMillisPrint >= printInterval) {
     previousMillisPrint = currentMillis;
-    printDebug();
+    //printDebug();
     if(errorState){errorFlash();}
   }
   detectButtonpresses();
@@ -84,7 +84,6 @@ void loop() {
   if(dogreenButtonOptionOne && !errorState){greenButtonOptionOne();}
   if(dogreenButtonOptionTwo && !errorState){greenButtonOptionTwo();}
   if(doredButton && !errorState){redButton();}
-
 }
 
 
@@ -99,7 +98,7 @@ void detectButtonpresses(){
       releasedTime[i] = millis();
       long pressDuration = releasedTime[i] - pressedTime[i];
       if(pressDuration < SHORT_PRESS_TIME){
-        if(buttonstates[0] || buttonstates[1]){ //If either green button short press
+        if(i == 0 || i == 1){ //If either green button short press
           startgreenButtonOptionOne = true; 
           dogreenButtonOptionOne = true;
           dogreenButtonOptionTwo = false;
@@ -107,7 +106,7 @@ void detectButtonpresses(){
           movevalvestimer = 0;
           flashgreenlights();
         }
-        if(buttonstates[2] || buttonstates[3]){ //If either red button short press
+        if(i == 3 || i == 2){ //If either red button short press
           startredButton = true; 
           dogreenButtonOptionOne = false;
           dogreenButtonOptionTwo = false;
@@ -122,7 +121,7 @@ void detectButtonpresses(){
     if(isPressing[i] == true && isLongDetected[i] == false) {
       long pressDuration = millis() - pressedTime[i];
       if(pressDuration > LONG_PRESS_TIME) {
-        if(buttonstates[0] || buttonstates[1]){ //If either green button long press
+        if(i == 0 || i == 1){     //If either green button long press
           startgreenButtonOptionTwo = true; 
           dogreenButtonOptionOne = false;
           dogreenButtonOptionTwo = true;
