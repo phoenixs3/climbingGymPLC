@@ -28,6 +28,7 @@ const int LONG_PRESS_TIME  = 2000;  //Units in milliseconds
 const int SHORT_PRESS_TIME = 1000;
 const int movevalveserrorthreshold = 300000;   //5 minutes
 const long printInterval = 300;   //also used for error state red light flash interval
+const int fanspeed0 = 0;
 const int fanspeed1 = 26;
 const int fanspeed2 = 51;
 const int fanspeed3 = 76;
@@ -42,10 +43,10 @@ unsigned long releasedTime[4];
 bool isPressing[4];
 bool isLongDetected[4];
 
-unsigned long previousMillisPrint, greenButtonOptionOneMillis = 0;
+unsigned long previousMillisPrint, greenButtonOptionOneMillis, greenButtonOptionTwoMillis, redButtonOptionOneMillis, redButtonOptionTwoMillis = 0;
 
-bool dogreenButtonOptionOne, dogreenButtonOptionTwo, doredButton = true;
-bool startgreenButtonOptionOne, startgreenButtonOptionTwo, startredButton = false;
+bool dogreenButtonOptionOne, dogreenButtonOptionTwo, doredButtonOptionOne, doredButtonOptionTwo = true;
+bool startgreenButtonOptionOne, startgreenButtonOptionTwo, startredButtonOptionOne, startredButtonOptionTwo = false;
 int movevalvestimer = 0;
 bool errorState = false;
 bool redState = false;
@@ -84,7 +85,9 @@ void loop() {
   readInputs();
   if(dogreenButtonOptionOne && !errorState){greenButtonOptionOne();}
   if(dogreenButtonOptionTwo && !errorState){greenButtonOptionTwo();}
-  if(doredButton && !errorState){redButton();}
+  if(doredButtonOptionOne && !errorState){redButtonOptionOne();}
+  if(doredButtonOptionTwo && !errorState){redButtonOptionTwo();}
+  
 }
 
 
@@ -103,15 +106,17 @@ void detectButtonpresses(){
           startgreenButtonOptionOne = true; 
           dogreenButtonOptionOne = true;
           dogreenButtonOptionTwo = false;
-          doredButton = false;
+          doredButtonOptionOne = false;
+          doredButtonOptionTwo = false;
           movevalvestimer = 0;
           flashgreenlights();
         }
         if(i == 3 || i == 2){ //If either red button short press
-          startredButton = true; 
+          startredButtonOptionOne = true; 
           dogreenButtonOptionOne = false;
           dogreenButtonOptionTwo = false;
-          doredButton = true;
+          doredButtonOptionOne = true;
+          doredButtonOptionTwo = false;
           movevalvestimer = 0;
           flashredlights();
         }
@@ -126,10 +131,19 @@ void detectButtonpresses(){
           startgreenButtonOptionTwo = true; 
           dogreenButtonOptionOne = false;
           dogreenButtonOptionTwo = true;
-          doredButton = false;
+          doredButtonOptionOne = false;
+          doredButtonOptionTwo = false;
           movevalvestimer = 0;
           flashgreenlights();
         }
+        if(i == 3 || i == 2){ //If either red button Long press
+          startredButtonOptionTwo = true; 
+          dogreenButtonOptionOne = false;
+          dogreenButtonOptionTwo = false;
+          doredButtonOptionOne = false;
+          doredButtonOptionTwo = true;
+          movevalvestimer = 0;
+          flashservicelights();
         Serial.print(i);
         Serial.println(" long press detected");
         isLongDetected[i] = true;
@@ -138,33 +152,60 @@ void detectButtonpresses(){
     lastbuttonstates[i] = buttonstates[i];
   }
 }
+}
 
 void greenButtonOptionOne(){
   if(startgreenButtonOptionOne && !errorState){   //Starting procedure only done once
     Serial.println("Doing greenButtonOptionOne");
     fanSpeed(fanspeed1);
-    if(!movevalves(false, true, false)){                     //Keep trying to move valves if they arent in position
+    if(!movevalves(true, false, true)){                     //Keep trying to move valves if they arent in position
         movevalvestimer++;
         delay(1);
     } else {startgreenButtonOptionOne = false; greenButtonOptionOneMillis = millis();}
-    if(movevalvestimer > movevalveserrorthreshold){errorState = true;}
+      //if(movevalvestimer > movevalveserrorthreshold){errorState = true;}
   }
   if((millis() - greenButtonOptionOneMillis) > 14400000){fanSpeed(0);}                         //After 4 hrs turn off fans
   if((millis() - greenButtonOptionOneMillis) > 72000000){startgreenButtonOptionOne = true;}    //After 20hrs start routine again
 }
 
 void greenButtonOptionTwo(){
-  if(startgreenButtonOptionTwo){   //Starting procedure only done once
+  if(startgreenButtonOptionTwo && !errorState){   //Starting procedure only done once
     Serial.println("Doing greenButtonOptionTwo");
-    startgreenButtonOptionTwo = false;
+    fanSpeed(fanspeed1);
+    if(!movevalves(true, false, true)){
+      movevalvestimer++;
+      delay(1);
+    } else {startgreenButtonOptionTwo = false; greenButtonOptionTwoMillis = millis();}
+    
+    //startgreenButtonOptionTwo = false;
   }
+  if((millis() - greenButtonOptionTwoMillis) > 7200000){fanSpeed(1);}                         //After 2 hrs turn off fans
+  if((millis() - greenButtonOptionTwoMillis) > 36000000){startgreenButtonOptionTwo = true;}    //After 10hrs start routine again
 }
 
-void redButton(){
-  if(startredButton){   //Starting procedure only done once
-    Serial.println("Doing redButton");
-    startredButton = false;
+void redButtonOptionOne(){
+  if(startredButtonOptionOne){   //Starting procedure only done once
+    Serial.println("Doing redButtonOptionOne");
+    fanSpeed(fanspeed0);
+    if(!movevalves(true, false, true)){
+      movevalvestimer++;
+      delay(1);
+    } else {startredButtonOptionOne = false; redButtonOptionOneMillis = millis();}
+    //startredButton = false;
   }
+  if((millis() - redButtonOptionOneMillis) > 3600000){fanSpeed(0), startredButtonOptionOne = true;}                         //Loop after 1hr  
+}
+
+void redButtonOptionTwo(){
+  if(startredButtonOptionTwo){
+    Serial.println("Doing redButtonOptionTwo");
+    fanSpeed(fanspeed0);
+    if(!movevalves(true, true, true)){
+      movevalvestimer++;
+      delay(1);
+    } else {startredButtonOptionTwo = false; redButtonOptionTwoMillis = millis();}
+  }
+  if((millis() - redButtonOptionTwoMillis > 3600000)){fanSpeed(0), startredButtonOptionTwo = true;}
 }
 
 void errorFlash(){
@@ -174,6 +215,12 @@ void errorFlash(){
 }
 
 void flashgreenlights(){
+    digitalWrite(greenLedOne, HIGH);
+    digitalWrite(greenLedTwo, HIGH);
+    delay(500);
+    digitalWrite(greenLedOne, LOW);
+    digitalWrite(greenLedTwo, LOW);
+    delay(500);
     digitalWrite(greenLedOne, HIGH);
     digitalWrite(greenLedTwo, HIGH);
     delay(500);
@@ -193,6 +240,39 @@ void flashredlights(){
     delay(500);
     digitalWrite(redLedOne, HIGH);
     digitalWrite(redLedTwo, HIGH);
+    delay(500);
+    digitalWrite(redLedOne, LOW);
+    digitalWrite(redLedTwo, LOW);
+    delay(500);
+    digitalWrite(redLedOne, HIGH);
+    digitalWrite(redLedTwo, HIGH);
+}
+
+void flashservicelights(){
+    digitalWrite(redLedOne, LOW);
+    digitalWrite(redLedTwo, LOW);
+    digitalWrite(greenLedOne, HIGH);
+    digitalWrite(greenLedTwo, HIGH);
+    delay(500);
+    digitalWrite(redLedOne, HIGH);
+    digitalWrite(redLedTwo, HIGH);
+    digitalWrite(greenLedOne, LOW);
+    digitalWrite(greenLedTwo, LOW);
+    delay(500);
+    digitalWrite(redLedOne, LOW);
+    digitalWrite(redLedTwo, LOW);
+    digitalWrite(greenLedOne, HIGH);
+    digitalWrite(greenLedTwo, HIGH);
+    delay(500);
+    digitalWrite(redLedOne, HIGH);
+    digitalWrite(redLedTwo, HIGH);
+    digitalWrite(greenLedOne, LOW);
+    digitalWrite(greenLedTwo, LOW);
+    delay(500);
+    digitalWrite(redLedOne, LOW);
+    digitalWrite(redLedTwo, LOW);
+    digitalWrite(greenLedOne, HIGH);
+    digitalWrite(greenLedTwo, HIGH);
 }
 
 bool movevalves(bool valve1pos, bool valve2pos, bool valve3pos){
@@ -201,15 +281,15 @@ bool movevalves(bool valve1pos, bool valve2pos, bool valve3pos){
   digitalWrite(valveTwoMotor, valve2pos);
   digitalWrite(valveThreeMotor, valve3pos);
   if(bypassvalvefeedback){
-      if(digitalRead(valveOneIn) != valve1pos){return true;}   //Check if the valve is moved, if not return false
-      if(digitalRead(valveTwoIn) != valve2pos){return true;}
-      if(digitalRead(valveThreeIn) != valve3pos){return true;}
+      if(analogRead(valveOneIn) != valve1pos){return true;}   //Check if the valve is moved, if not return false
+      if(analogRead(valveTwoIn) != valve2pos){return true;}
+      if(analogRead(valveThreeIn) != valve3pos){return true;}
   } else if (!bypassvalvefeedback) {
       if(digitalRead(valveOneIn) != valve1pos){return false;}   //Check if the valve is moved, if not return false
       if(digitalRead(valveTwoIn) != valve2pos){return false;}
       if(digitalRead(valveThreeIn) != valve3pos){return false;}
   }
-  else{return true;}
+  else{return true;} 
 }
 
 void fanSpeed(int fanspeed){
