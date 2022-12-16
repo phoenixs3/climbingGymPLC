@@ -31,6 +31,7 @@ const long printInterval = 300;   //also used for error state red light flash in
 const int fanspeed1 = 26;
 const int fanspeed2 = 51;
 const int fanspeed3 = 76;
+const bool bypassvalvefeedback = 1;
 //////////////////////////////////////
 
 //-----Program variables-----//
@@ -139,15 +140,14 @@ void detectButtonpresses(){
 }
 
 void greenButtonOptionOne(){
-  if(startgreenButtonOptionOne){   //Starting procedure only done once
+  if(startgreenButtonOptionOne && !errorState){   //Starting procedure only done once
     Serial.println("Doing greenButtonOptionOne");
     fanSpeed(fanspeed1);
     if(!movevalves(false, true, false)){                     //Keep trying to move valves if they arent in position
         movevalvestimer++;
         delay(1);
-    }
+    } else {startgreenButtonOptionOne = false; greenButtonOptionOneMillis = millis();}
     if(movevalvestimer > movevalveserrorthreshold){errorState = true;}
-    else{startgreenButtonOptionOne = false; greenButtonOptionOneMillis = millis();}
   }
   if((millis() - greenButtonOptionOneMillis) > 14400000){fanSpeed(0);}                         //After 4 hrs turn off fans
   if((millis() - greenButtonOptionOneMillis) > 72000000){startgreenButtonOptionOne = true;}    //After 20hrs start routine again
@@ -196,13 +196,19 @@ void flashredlights(){
 }
 
 bool movevalves(bool valve1pos, bool valve2pos, bool valve3pos){
-  //Cuation: untested so logic output/input states may need inverting to match hardware
+  //Caution: untested so logic output/input states may need inverting to match hardware
   digitalWrite(valveOneMotor, valve1pos);
   digitalWrite(valveTwoMotor, valve2pos);
   digitalWrite(valveThreeMotor, valve3pos);
-  if(digitalRead(valveOneIn) != valve1pos){return false;}   //Check if the valve is moved, if not return false
-  if(digitalRead(valveTwoIn) != valve2pos){return false;}
-  if(digitalRead(valveThreeIn) != valve3pos){return false;}
+  if(bypassvalvefeedback){
+      if(digitalRead(valveOneIn) != valve1pos){return true;}   //Check if the valve is moved, if not return false
+      if(digitalRead(valveTwoIn) != valve2pos){return true;}
+      if(digitalRead(valveThreeIn) != valve3pos){return true;}
+  } else if (!bypassvalvefeedback) {
+      if(digitalRead(valveOneIn) != valve1pos){return false;}   //Check if the valve is moved, if not return false
+      if(digitalRead(valveTwoIn) != valve2pos){return false;}
+      if(digitalRead(valveThreeIn) != valve3pos){return false;}
+  }
   else{return true;}
 }
 
